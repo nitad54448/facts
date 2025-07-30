@@ -62,12 +62,6 @@
         .btn:hover:after {
             width: 170%;
         }
-        
-        /* Custom styles for the date picker icon */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(0.8) brightness(100%) sepia(100%) hue-rotate(180deg);
-            cursor: pointer;
-        }
     </style>
 </head>
 <body class="text-gray-200">
@@ -81,17 +75,14 @@
         </header>
 
         <!-- Controls Section -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="mb-6">
             <button id="random-fact-btn" class="btn w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-lg">
-                Get Random Fact
-            </button>
-            <button id="today-fact-btn" class="btn w-full bg-teal-600 hover:bg-teal-500 text-white font-semibold py-3 px-4 rounded-lg">
-                Fact of the Day
+                Get a Random Useless Fact
             </button>
         </div>
 
         <!-- Fact Display Section -->
-        <div id="fact-display" class="bg-gray-900/50 p-6 rounded-lg min-h-[150px] flex items-center justify-center text-center mb-8">
+        <div id="fact-display" class="bg-gray-900/50 p-6 rounded-lg min-h-[150px] flex items-center justify-center text-center">
             <!-- Loading spinner -->
             <div id="loader" class="hidden">
                 <svg class="animate-spin h-8 w-8 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -101,14 +92,8 @@
             </div>
             <!-- Fact content will be injected here -->
             <div id="fact-content">
-                <p class="text-lg text-gray-300">Click a button to get a fact!</p>
+                <p class="text-lg text-gray-300">Click the button to get a fact!</p>
             </div>
-        </div>
-        
-        <!-- Date Picker Section -->
-        <div>
-            <label for="date-picker" class="block text-sm font-medium text-gray-400 mb-2 text-center">Or find a fact from a specific date:</label>
-            <input type="date" id="date-picker" class="w-full bg-gray-700/50 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
         </div>
         
         <!-- Message Box for errors or info -->
@@ -126,14 +111,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             // DOM element references
             const randomFactBtn = document.getElementById('random-fact-btn');
-            const todayFactBtn = document.getElementById('today-fact-btn');
-            const datePicker = document.getElementById('date-picker');
             const factContent = document.getElementById('fact-content');
             const loader = document.getElementById('loader');
             const messageBox = document.getElementById('message-box');
 
+            // CORS Proxy URL
+            const PROXY_URL = 'https://corsproxy.io/?';
+            
             // API base URL
-            const API_BASE_URL = 'https://uselessfacts.jsph.pl/api/v2/facts/';
+            const API_BASE_URL = 'https://uselessfacts.jsph.pl/api/v2/facts/random';
 
             /**
              * Hides or shows a DOM element.
@@ -176,16 +162,18 @@
             };
 
             /**
-             * Fetches a fact from the API based on the provided endpoint.
-             * @param {string} endpoint - The API endpoint (e.g., 'random', 'today', 'YYYY-MM-DD').
+             * Fetches a random fact from the API.
              */
-            const fetchFact = async (endpoint) => {
+            const fetchFact = async () => {
                 toggleElement(loader, true);
                 toggleElement(factContent, false);
                 toggleElement(messageBox, false); // Hide previous messages
 
+                // Construct the full URL with the proxy
+                const fullUrl = `${PROXY_URL}${API_BASE_URL}`;
+
                 try {
-                    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                    const response = await fetch(fullUrl);
                     
                     if (!response.ok) {
                         // Handle non-successful HTTP responses
@@ -208,28 +196,10 @@
             };
 
             // Event Listeners
-            randomFactBtn.addEventListener('click', () => fetchFact('random'));
-            todayFactBtn.addEventListener('click', () => fetchFact('today'));
+            randomFactBtn.addEventListener('click', fetchFact);
             
-            datePicker.addEventListener('change', (e) => {
-                const selectedDate = e.target.value;
-                if (selectedDate) {
-                    // Check if the selected date is in the future
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Normalize today's date
-                    const chosenDate = new Date(selectedDate);
-
-                    if (chosenDate > today) {
-                        showMessage("Cannot fetch facts from the future! Please select a past or present date.", true);
-                        datePicker.value = ''; // Reset date picker
-                        return;
-                    }
-                    fetchFact(selectedDate);
-                }
-            });
-
             // Fetch an initial random fact on page load
-            fetchFact('random');
+            fetchFact();
         });
     </script>
 </body>
