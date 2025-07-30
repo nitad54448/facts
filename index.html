@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Useless Facts Generator</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles for the app */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark blue-gray background */
+            background-image: radial-gradient(circle at 1px 1px, #374151 1px, transparent 0);
+            background-size: 30px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* Styling for the main card container */
+        .fact-container {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 100%;
+            max-width: 42rem; /* 672px */
+        }
+
+        /* Button styling */
+        .btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:after {
+            content: '';
+            position: absolute;
+            z-index: -1;
+            top: 0;
+            left: -35%;
+            width: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: skewX(30deg);
+            transition: width 0.4s ease;
+        }
+
+        .btn:hover:after {
+            width: 170%;
+        }
+        
+        /* Custom styles for the date picker icon */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8) brightness(100%) sepia(100%) hue-rotate(180deg);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <main class="fact-container p-6 sm:p-8 rounded-2xl">
+
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">Useless Facts Generator</h1>
+            <p class="text-gray-400">Discover something new and delightfully useless.</p>
+        </header>
+
+        <!-- Controls Section -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <button id="random-fact-btn" class="btn w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-lg">
+                Get Random Fact
+            </button>
+            <button id="today-fact-btn" class="btn w-full bg-teal-600 hover:bg-teal-500 text-white font-semibold py-3 px-4 rounded-lg">
+                Fact of the Day
+            </button>
+        </div>
+
+        <!-- Fact Display Section -->
+        <div id="fact-display" class="bg-gray-900/50 p-6 rounded-lg min-h-[150px] flex items-center justify-center text-center mb-8">
+            <!-- Loading spinner -->
+            <div id="loader" class="hidden">
+                <svg class="animate-spin h-8 w-8 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            <!-- Fact content will be injected here -->
+            <div id="fact-content">
+                <p class="text-lg text-gray-300">Click a button to get a fact!</p>
+            </div>
+        </div>
+        
+        <!-- Date Picker Section -->
+        <div>
+            <label for="date-picker" class="block text-sm font-medium text-gray-400 mb-2 text-center">Or find a fact from a specific date:</label>
+            <input type="date" id="date-picker" class="w-full bg-gray-700/50 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+        </div>
+        
+        <!-- Message Box for errors or info -->
+        <div id="message-box" class="hidden mt-4 text-center text-red-400 bg-red-900/50 p-3 rounded-lg"></div>
+
+    </main>
+    
+    <footer class="text-center mt-8 pb-4">
+      <a href="https://nitad54448.github.io" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-gray-400 transition-colors">
+        nitad54448.github.io
+      </a>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM element references
+            const randomFactBtn = document.getElementById('random-fact-btn');
+            const todayFactBtn = document.getElementById('today-fact-btn');
+            const datePicker = document.getElementById('date-picker');
+            const factContent = document.getElementById('fact-content');
+            const loader = document.getElementById('loader');
+            const messageBox = document.getElementById('message-box');
+
+            // API base URL
+            const API_BASE_URL = 'https://uselessfacts.jsph.pl/api/v2/facts/';
+
+            /**
+             * Hides or shows a DOM element.
+             * @param {HTMLElement} element - The element to toggle.
+             * @param {boolean} show - True to show, false to hide.
+             */
+            const toggleElement = (element, show) => {
+                element.classList.toggle('hidden', !show);
+            };
+
+            /**
+             * Displays a message to the user.
+             * @param {string} message - The message to display.
+             * @param {boolean} isError - If true, styles the message as an error.
+             */
+            const showMessage = (message, isError = false) => {
+                messageBox.textContent = message;
+                messageBox.className = `mt-4 text-center p-3 rounded-lg ${isError ? 'text-red-400 bg-red-900/50' : 'text-blue-300 bg-blue-900/50'}`;
+                toggleElement(messageBox, true);
+            };
+
+            /**
+             * Renders the fetched fact data into the display area.
+             * @param {object} data - The fact data from the API.
+             */
+            const displayFact = (data) => {
+                if (!data || !data.text) {
+                    factContent.innerHTML = `<p class="text-lg text-yellow-400">Could not retrieve a valid fact. Please try again.</p>`;
+                    return;
+                }
+                
+                factContent.innerHTML = `
+                    <blockquote class="text-xl sm:text-2xl italic text-white">
+                        "${data.text}"
+                    </blockquote>
+                    <a href="${data.source_url}" target="_blank" rel="noopener noreferrer" class="block text-sm text-indigo-400 hover:text-indigo-300 mt-4 transition-colors">
+                        Source: ${data.source}
+                    </a>
+                `;
+            };
+
+            /**
+             * Fetches a fact from the API based on the provided endpoint.
+             * @param {string} endpoint - The API endpoint (e.g., 'random', 'today', 'YYYY-MM-DD').
+             */
+            const fetchFact = async (endpoint) => {
+                toggleElement(loader, true);
+                toggleElement(factContent, false);
+                toggleElement(messageBox, false); // Hide previous messages
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                    
+                    if (!response.ok) {
+                        // Handle non-successful HTTP responses
+                        const errorData = await response.json().catch(() => null);
+                        const errorMessage = errorData?.message || `Error: ${response.status} ${response.statusText}`;
+                        throw new Error(errorMessage);
+                    }
+
+                    const data = await response.json();
+                    displayFact(data);
+
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    showMessage(`Failed to fetch fact. ${error.message}`, true);
+                    factContent.innerHTML = `<p class="text-lg text-gray-400">Try fetching another fact!</p>`;
+                } finally {
+                    toggleElement(loader, false);
+                    toggleElement(factContent, true);
+                }
+            };
+
+            // Event Listeners
+            randomFactBtn.addEventListener('click', () => fetchFact('random'));
+            todayFactBtn.addEventListener('click', () => fetchFact('today'));
+            
+            datePicker.addEventListener('change', (e) => {
+                const selectedDate = e.target.value;
+                if (selectedDate) {
+                    // Check if the selected date is in the future
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Normalize today's date
+                    const chosenDate = new Date(selectedDate);
+
+                    if (chosenDate > today) {
+                        showMessage("Cannot fetch facts from the future! Please select a past or present date.", true);
+                        datePicker.value = ''; // Reset date picker
+                        return;
+                    }
+                    fetchFact(selectedDate);
+                }
+            });
+
+            // Fetch an initial random fact on page load
+            fetchFact('random');
+        });
+    </script>
+</body>
+</html>
